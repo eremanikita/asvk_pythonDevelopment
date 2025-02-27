@@ -2,6 +2,7 @@ import random
 import requests
 import sys
 import certifi
+import cowsay
 
 
 def bullscows(hunch: str, riddle: str) -> (int, int):
@@ -27,15 +28,17 @@ def gameplay(ask: callable, inform: callable, words: list[str]) -> int:
 
 
 def ask(prompt: str, valid: list[str] = None) -> str:
-    word = input(prompt)
+    print(cowsay.cowsay(prompt))
+    word = input()
     if valid is not None:
         while word not in valid:
-            word = input(prompt)
+            print(cowsay.cowsay(prompt))
+            word = input()
     return word
 
 
 def inform(format_string: str, bulls: int, cows: int) -> None:
-    print(format_string.format(bulls, cows))
+    cowsay.cowsay(format_string.format(bulls, cows))
 
 
 def load_words(source: str, length: int) -> list[str]:
