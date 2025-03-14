@@ -3,18 +3,16 @@ import cowsay
 import shlex
 
 clients = {}
-clients_names = {}
-
 
 async def chat(reader, writer):
     me = "{}:{}".format(*writer.get_extra_info('peername'))
     print(me)
 
     username = None
-    clients[me] = asyncio.Queue()
+    queue = asyncio.Queue()
 
     send = asyncio.create_task(reader.readline())
-    receive = asyncio.create_task(clients[me].get())
+    receive = asyncio.create_task(queue.get())
     while True:
         done, pending = await asyncio.wait([send, receive], return_when=asyncio.FIRST_COMPLETED)
         for q in done:
@@ -24,31 +22,29 @@ async def chat(reader, writer):
 
                 match shlex.split(text):
                     case ["who"]:
-                        await clients[me].put(", ".join(clients_names.keys()))
+                        await queue.put(", ".join(clients.keys()))
                     case ["cows"]:
-                        await clients[me].put(", ".join(cowsay.list_cows() - clients.keys()))
+                        await queue.put(", ".join(cowsay.list_cows() - clients.keys()))
                     case ["login", name] if not username:
                         if name in cowsay.list_cows() - clients.keys():
-                            clients_names[name] = me
                             username = name
+                            clients[name] = queue
                     case ["say", name, message] if username:
-                        await clients[clients_names[name]].put(f"{username}>\n{cowsay.cowsay(message, cow=username)}")
+                        await clients[name].put(f"{cowsay.cowsay(message, cow=username)}")
                     case ["yield", message] if username:
-                        for out in map(lambda x: clients[clients_names[x]], clients_names.keys()):
-                            if out is not clients[me]:
-                                await out.put(f"{username}>\n{cowsay.cowsay(message, cow=username)}")
+                        for out in clients.values():
+                            if out is not clients[username]:
+                                await out.put(f"{cowsay.cowsay(message, cow=username)}")
                     case ["quit"]:
-                        clients.pop(me)
-                        clients_names.pop(username)
                         send.cancel()
                         receive.cancel()
                         print(me, "DONE")
-                        del clients[me]
+                        del clients[username]
                         writer.close()
                         await writer.wait_closed()
                         return
             elif q is receive:
-                receive = asyncio.create_task(clients[me].get())
+                receive = asyncio.create_task(queue.get())
                 writer.write(f"{q.result()}\n".encode())
                 await writer.drain()
 
