@@ -23,19 +23,20 @@ async def chat(reader, writer):
                 text = q.result().decode()
 
                 match shlex.split(text):
-                    case ["who"] if username:
-                        await clients[me].put(" ".join(clients_names.keys()))
-                    case ["cows"] if username:
-                        await clients[me].put(cowsay.list_cows() - clients.keys())
+                    case ["who"]:
+                        await clients[me].put(", ".join(clients_names.keys()))
+                    case ["cows"]:
+                        await clients[me].put(", ".join(cowsay.list_cows() - clients.keys()))
                     case ["login", name] if not username:
-                        clients_names[name] = me
-                        username = name
+                        if name in cowsay.list_cows() - clients.keys():
+                            clients_names[name] = me
+                            username = name
                     case ["say", name, message] if username:
-                        await clients[clients_names[name]].put(f"{username}> {message}")
+                        await clients[clients_names[name]].put(f"{username}>\n{cowsay.cowsay(message, cow=username)}")
                     case ["yield", message] if username:
                         for out in map(lambda x: clients[clients_names[x]], clients_names.keys()):
                             if out is not clients[me]:
-                                await out.put(f"{username}> {message}")
+                                await out.put(f"{username}>\n{cowsay.cowsay(message, cow=username)}")
                     case ["quit"]:
                         clients.pop(me)
                         clients_names.pop(username)
